@@ -68,10 +68,9 @@ static void sbus_to_rc(const uint8_t *sbus_buf)
         key_with_shift = rc_ctrl[TEMP].key[KEY_PRESS_WITH_SHIFT].keys,      //  当前shift组合键是否按下
         key_last_with_ctrl = rc_ctrl[LAST].key[KEY_PRESS_WITH_CTRL].keys,   // 上一次ctrl组合键是否按下
         key_last_with_shift = rc_ctrl[LAST].key[KEY_PRESS_WITH_SHIFT].keys; // 上一次shift组合键是否按下
-
     for (uint16_t i = 0, j = 0x1; i < 16; j <<= 1, i++)
     {
-        if (i == 4 || i == 5) // 4,5位为ctrl和shift,直接跳过
+        if (i == 4  || i == 5) // 4,5位为ctrl和shift,直接跳过
             continue;
         // 如果当前按键按下,上一次按键没有按下,且ctrl和shift组合键没有按下,则按键按下计数加1(检测到上升沿)
         if ((key_now & j) && !(key_last & j) && !(key_with_ctrl & j) && !(key_with_shift & j))
@@ -83,7 +82,7 @@ static void sbus_to_rc(const uint8_t *sbus_buf)
         if ((key_with_shift & j) && !(key_last_with_shift & j))
             rc_ctrl[TEMP].key_count[KEY_PRESS_WITH_SHIFT][i]++;
     }
-
+    rc_ctrl[TEMP].lost_flag = 0; // 收到数据,清除掉线标志
     memcpy(&rc_ctrl[LAST], &rc_ctrl[TEMP], sizeof(RC_ctrl_t)); // 保存上一次的数据,用于按键持续按下和切换的判断
 }
 
@@ -104,6 +103,7 @@ static void RemoteControlRxCallback()
 static void RCLostCallback(void *id)
 {
     memset(rc_ctrl, 0, sizeof(rc_ctrl)); // 清空遥控器数据
+    rc_ctrl[TEMP].lost_flag = 1;         // 遥控器离线标志位
     USARTServiceInit(rc_usart_instance); // 尝试重新启动接收
     LOGWARNING("[rc] remote control lost");
 }

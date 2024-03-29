@@ -45,8 +45,8 @@
 // 对应key[x][0~16],获取对应的键;例如通过key[KEY_PRESS][Key_W]获取W键是否按下,后续改为位域后删除
 #define Key_W 0
 #define Key_S 1
-#define Key_D 2
-#define Key_A 3
+#define Key_A 2
+#define Key_D 3
 #define Key_Shift 4
 #define Key_Ctrl 5
 #define Key_Q 6
@@ -68,8 +68,8 @@ typedef union
     {
         uint16_t w : 1;
         uint16_t s : 1;
-        uint16_t d : 1;
         uint16_t a : 1;
+        uint16_t d : 1;
         uint16_t shift : 1;
         uint16_t ctrl : 1;
         uint16_t q : 1;
@@ -111,6 +111,7 @@ typedef struct
     Key_t key[3]; // 改为位域后的键盘索引,空间减少8倍,速度增加16~倍
 
     uint8_t key_count[3][16];
+    uint8_t lost_flag; // 遥控器丢失标志位,用于判断遥控器是否掉线
 } RC_ctrl_t;
 
 /* ------------------------- Internal Data ----------------------------------- */

@@ -55,10 +55,34 @@
         "stm32f4xx_hal_conf.h": "c",
         "master_process.h": "c",
         "bsp_can.h": "c",
-        "can.h": "c"
+        "can.h": "c",
+        "cstdint": "c",
+        "usbd_cdc.h": "c",
+        "servo_motor.h": "c",
+        "tim.h": "c",
+        "daemon.h": "c",
+        "crc16.h": "c",
+        "ins_task.h": "c",
+        "gimbal.h": "c",
+        "shoot.h": "c",
+        "segger_rtt_conf.h": "c",
+        "stdbool.h": "c",
+        "seasky_protocol.h": "c",
+        "crc8.h": "c",
+        "remote_control.h": "c",
+        "robot_cmd.h": "c",
+        "usart.h": "c",
+        "referee_ui.h": "c",
+        "freertos.h": "c",
+        "referee_protocol.h": "c",
+        "complex_math_functions.h": "c",
+        "matrix_functions.h": "c",
+        "bayes_functions.h": "c",
+        "interpolation_functions.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
-    // "C_Cpp.default.compilerPath": "D:\\Msys2\\mingw64\\bin\\arm-none-eabi-gcc.exe"
-    "makefile.compileCommandsPath": "build/compile_commands.json"
+    //"C_Cpp.default.compilerPath": "D:\\Msys2\\mingw64\\bin\\arm-none-eabi-gcc.exe",
+    "makefile.compileCommandsPath": "build/compile_commands.json",
+    "C_Cpp.errorSquiggles": "disabled"
 }

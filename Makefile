@@ -150,6 +150,7 @@ modules/message_center/message_center.c \
 modules/daemon/daemon.c \
 modules/vofa/vofa.c \
 modules/alarm/buzzer.c \
+bsp/log/printf.c \
 application/gimbal/gimbal.c \
 application/chassis/chassis.c \
 application/shoot/shoot.c \
@@ -346,6 +347,9 @@ clean:
 #######################################
 # download directl without debugging
 #######################################
+BUILD_DIR := build
+TARGET := basic_framework
+
 download_dap:
 	openocd -f openocd_dap.cfg -c init -c halt -c "flash write_image erase $(BUILD_DIR)/$(TARGET).bin 0x08000000" -c reset -c shutdown
 download_jlink:

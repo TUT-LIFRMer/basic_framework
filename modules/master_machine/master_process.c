@@ -9,28 +9,110 @@
  *
  */
 #include "master_process.h"
-#include "seasky_protocol.h"
+// #include "seasky_protocol.h"
 #include "daemon.h"
 #include "bsp_log.h"
 #include "robot_def.h"
+#include "crc.h"
+#include "bsp_dwt.h"
 
 static Vision_Recv_s recv_data;
 static Vision_Send_s send_data;
 static DaemonInstance *vision_daemon_instance;
+static USARTInstance *vision_usart_instance;
+// void VisionSetFlag(Enemy_Color_e enemy_color, Work_Mode_e work_mode, Bullet_Speed_e bullet_speed)
+// {
+//     send_data.enemy_color = enemy_color;
+//     send_data.work_mode = work_mode;
+//     send_data.bullet_speed = bullet_speed;
+// }
 
-void VisionSetFlag(Enemy_Color_e enemy_color, Work_Mode_e work_mode, Bullet_Speed_e bullet_speed)
+// void VisionSetAltitude(float yaw, float pitch, float roll)
+// {
+//     send_data.yaw = yaw;
+//     send_data.pitch = pitch;
+//     send_data.roll = roll;
+// }
+
+//硬件crc32校验
+CRC_STATE check_data4_crc32(uint8_t *pbuffer,uint8_t length_4multi)
 {
-    send_data.enemy_color = enemy_color;
-    send_data.work_mode = work_mode;
-    send_data.bullet_speed = bullet_speed;
+    uint32_t *p32;
+    uint32_t crc_cal = 0;
+    
+    p32 = (uint32_t*)&pbuffer[0];
+    crc_cal = HAL_CRC_Calculate(&hcrc,p32,(uint32_t)(length_4multi/4-1));
+
+    p32 = (uint32_t*)&pbuffer[length_4multi-4];
+    if (*p32 == crc_cal)
+    {
+      return CRC_RIGHT;
+    }
+    else
+    {
+      return CRC_WRONG;
+    }
 }
 
-void VisionSetAltitude(float yaw, float pitch, float roll)
+/*
+    此函数根据待发送的数据更新数据帧格式以及内容，实现数据的打包操作
+    后续调用通信接口的发送函数发送tx_buf中的对应数据
+*/
+void get_protocol_send_data(
+                            uint8_t *tx_buf,         // 待发送的数据帧
+                            Vision_Send_s *tx_data          // 待发送的float数据
+                
+                            )    // 待发送的数据帧长度
 {
-    send_data.yaw = yaw;
-    send_data.pitch = pitch;
-    send_data.roll = roll;
+    float *pf;
+    int8_t *pi8;
+    int16_t *pi16;
+    uint32_t *p32;
+    
+    tx_buf[0] = tx_data->sof;
+    pi8 = (int8_t*)&tx_buf[1];
+    *pi8 = tx_data->fire_times;
+
+    pf = (float*)&tx_buf[2];
+    *pf = tx_data->abs_pitch;
+
+    pf = (float*)&tx_buf[6];
+    *pf = tx_data->abs_yaw;
+
+    pi16 = (int16_t*)&tx_buf[10];
+    *pi16 = tx_data->reserved_slot;
+
+    p32 = (uint32_t*)&tx_buf[0];
+    tx_data->crc_value=HAL_CRC_Calculate(&hcrc,p32,3);
+
+    p32 = (uint32_t*)&tx_buf[12];
+    *p32 = tx_data->crc_value;
 }
+/*
+    此函数用于处理接收数据，
+    返回数据内容的id
+*/
+void get_protocol_info(uint8_t *rx_buf, Vision_Recv_s *rx_data)         // 接收的float数据存储地址
+{
+    if (rx_buf[0] == 'A')
+    {
+        if(check_data4_crc32(rx_buf,ACTION_DATA_LENGTH) == CRC_WRONG)
+        {
+            return;
+        }
+        else
+        {
+            rx_data->ACTION_DATA.sof = rx_buf[0];
+            rx_data->ACTION_DATA.fire_times = rx_buf[1];
+            rx_data->ACTION_DATA.abs_pitch = *((float*) &rx_buf[2]);
+            rx_data->ACTION_DATA.abs_yaw = *((float*) &rx_buf[6]);
+            rx_data->ACTION_DATA.reserved_slot = *((int16_t*) &rx_buf[10]);
+            rx_data->ACTION_DATA.crc_check = *((uint32_t*) &rx_buf[12]);
+        }
+    }
+}
+
+
 
 /**
  * @brief 离线回调函数,将在daemon.c中被daemon task调用
@@ -51,7 +133,7 @@ static void VisionOfflineCallback(void *id)
 
 #include "bsp_usart.h"
 
-static USARTInstance *vision_usart_instance;
+
 
 /**
  * @brief 接收解包回调函数,将在bsp_usart.c中被usart rx callback调用
@@ -60,9 +142,9 @@ static USARTInstance *vision_usart_instance;
  */
 static void DecodeVision()
 {
-    uint16_t flag_register;
+    // uint16_t flag_register;
     DaemonReload(vision_daemon_instance); // 喂狗
-    get_protocol_info(vision_usart_instance->recv_buff, &flag_register, (uint8_t *)&recv_data.pitch);
+    get_protocol_info(vision_usart_instance->recv_buff, &recv_data);
     // TODO: code to resolve flag_register;
 }
 
@@ -91,18 +173,18 @@ Vision_Recv_s *VisionInit(UART_HandleTypeDef *_handle)
  * @param send 待发送数据
  *
  */
-void VisionSend()
+void VisionSend(Vision_Send_s *tx_data)
 {
     // buff和txlen必须为static,才能保证在函数退出后不被释放,使得DMA正确完成发送
     // 析构后的陷阱需要特别注意!
-    static uint16_t flag_register;
+    // static uint16_t flag_register;
     static uint8_t send_buff[VISION_SEND_SIZE];
-    static uint16_t tx_len;
+    // static uint16_t tx_len;
     // TODO: code to set flag_register
-    flag_register = 30 << 8 | 0b00000001;
+    // flag_register = 30 << 8 | 0b00000001;
     // 将数据转化为seasky协议的数据包
-    get_protocol_send_data(0x02, flag_register, &send_data.yaw, 3, send_buff, &tx_len);
-    USARTSend(vision_usart_instance, send_buff, tx_len, USART_TRANSFER_DMA); // 和视觉通信使用IT,防止和接收使用的DMA冲突
+    get_protocol_send_data(send_buff, tx_data);
+    USARTSend(vision_usart_instance, send_buff, sizeof(Vision_Send_s), USART_TRANSFER_DMA); // 和视觉通信使用IT,防止和接收使用的DMA冲突
     // 此处为HAL设计的缺陷,DMASTOP会停止发送和接收,导致再也无法进入接收中断.
     // 也可在发送完成中断中重新启动DMA接收,但较为复杂.因此,此处使用IT发送.
     // 若使用了daemon,则也可以使用DMA发送.
